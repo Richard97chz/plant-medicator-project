@@ -138,7 +138,7 @@ orderly-set==5.2.2
 orjson==3.10.7
 overrides==7.7.0
 packaging==24.1
-pandas==2.2.2
+pandas==2.1.4
 passlib==1.7.4
 pdf2image==1.17.0
 pdfminer==20191125
