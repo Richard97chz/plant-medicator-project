@@ -73,7 +73,6 @@ installer==0.7.0
 iopath==0.1.10
 jaraco.classes==3.4.0
 Jinja2==3.1.4
-jiter==0.5.0
 joblib==1.4.2
 jsonpatch==1.33
 jsonpath-python==1.0.6
