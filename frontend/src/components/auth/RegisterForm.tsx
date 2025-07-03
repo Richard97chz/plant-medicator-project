@@ -365,12 +365,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
       await handleRegister(formData);
       setSuccessMessage('¡Usuario registrado exitosamente! Redirigiendo al login...');
       
-      // Redirección con verificación explícita
+      // Redirección con timeout para mostrar el mensaje
       setTimeout(() => {
         if (onRegisterSuccess) {
-          onRegisterSuccess();
+          onRegisterSuccess(); // Esto ejecutará navigate('/login') desde App.tsx
         } else {
-          navigate('/login', { replace: true });
+          navigate('/login', { replace: true }); // Fallback por si no hay prop
         }
       }, 2000);
     } catch (error: any) {
