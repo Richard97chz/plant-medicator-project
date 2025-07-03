@@ -351,7 +351,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar todos los campos antes de enviar
     const isFormValid = validateAllFields();
     
     if (!isFormValid) {
@@ -360,18 +359,17 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
     }
     
     setIsSubmitting(true);
-    setErrors({}); // Limpiar errores anteriores
-
+    setErrors({});
+  
     try {
       await handleRegister(formData);
       setSuccessMessage('¡Usuario registrado exitosamente! Redirigiendo al login...');
-      // Redirección alternativa si el efecto falla
+      
+      // Redirección con verificación explícita
+      console.log('Intentando redirigir a /login'); // Debug
       setTimeout(() => {
-        if (onRegisterSuccess) {
-          onRegisterSuccess();
-        } else {
-          navigate('/login');
-        }
+        console.log('Ejecutando navigate'); // Debug
+        navigate('/login', { replace: true }); // Usa replace para evitar problemas de historial
       }, 2000);
     } catch (error: any) {
       console.error('Error al registrar:', error);
