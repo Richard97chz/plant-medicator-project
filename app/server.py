@@ -813,26 +813,52 @@ async def health_check():
     """
     try:
         # Probar conexión a la base de datos
-        connection = get_db_connection()
-        cursor = connection.cursor()
-        cursor.execute("SELECT 1")
-        cursor.fetchone()
-        cursor.close()
-        connection.close()
-        
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "message": "Server is running correctly"
-        }
+        connection = None
+        try:
+            connection = get_db_connection()
+            cursor = connection.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            cursor.close()
+            
+            return {
+                "status": "healthy",
+                "database": "connected",
+                "message": "Server and database are running correctly"
+            }
+        except Exception as db_error:
+            logger.error(f"Database connection error: {db_error}")
+            return {
+                "status": "healthy",
+                "database": "disconnected",
+                "message": "Server is running but database connection failed",
+                "error": str(db_error)
+            }, 200
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return {
             "status": "unhealthy",
-            "database": "disconnected",
             "error": str(e)
-        }
+        }, 503
+    finally:
+        if connection:
+            connection.close()
 
+def get_db_connection():
+    """Establece conexión con la base de datos PostgreSQL"""
+    try:
+        conn = psycopg2.connect(
+            dbname=os.getenv("DATABASE_URL") or os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            host=os.getenv("DB_HOST"),
+            port=os.getenv("DB_PORT", "5432")
+        )
+        return conn
+    except Exception as e:
+        logger.error(f"❌ Error conectando a la base de datos: {str(e)}")
+        raise
+        
 # Endpoint para verificar variables de entorno (útil para debugging)
 @app.get("/debug/env")
 async def debug_env():
