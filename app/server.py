@@ -90,10 +90,18 @@ app = FastAPI(lifespan=lifespan)
 
 CORS_ORIGINS = [
     "http://localhost:3000",  # Para desarrollo local
-    #"https://tu-app-frontend.vercel.app",  # Cambia por tu dominio real
-    "https://*.vercel.app",  # Para previews de Vercel
+    "https://plant-medicator-project.vercel.app",  # Tu dominio específico
+    "https://plant-medicator-project-pvin1pbxd-richard97chzs-projects.vercel.app",  # Deployment específico
 ]
 
+# Si estás en producción, agregar dinámicamente los dominios de Vercel
+if os.getenv("NODE_ENV") == "production":
+    # Agregar dominios de preview de Vercel
+    CORS_ORIGINS.extend([
+        "https://plant-medicator-project-git-main-richard97chzs-projects.vercel.app",
+        # Puedes agregar más dominios aquí según sea necesario
+    ])
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -793,6 +801,51 @@ async def login(credentials: LoginCredentials):
         if connection:
             connection.close()
 
+# Agregar este endpoint para verificar el estado del servidor
+@app.get("/health")
+async def health_check():
+    """
+    Endpoint para verificar el estado del servidor y la base de datos
+    """
+    try:
+        # Probar conexión a la base de datos
+        connection = get_db_connection()
+        cursor = connection.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        cursor.close()
+        connection.close()
+        
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "message": "Server is running correctly"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "database": "disconnected",
+            "error": str(e)
+        }
+
+# Endpoint para verificar variables de entorno (útil para debugging)
+@app.get("/debug/env")
+async def debug_env():
+    """
+    Endpoint para verificar las variables de entorno (solo para debugging)
+    """
+    return {
+        "DB_HOST": os.getenv("DB_HOST"),
+        "DB_NAME": os.getenv("DB_NAME"),
+        "DB_USER": os.getenv("DB_USER"),
+        "DB_PORT": os.getenv("DB_PORT"),
+        "NODE_ENV": os.getenv("NODE_ENV"),
+        "PORT": os.getenv("PORT"),
+        "DATABASE_URL_SET": bool(os.getenv("DATABASE_URL")),
+        # No mostrar valores sensibles como passwords
+    }
+    
 def run():
     import uvicorn
     print_terminal_separator()
