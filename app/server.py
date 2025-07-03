@@ -847,14 +847,23 @@ async def health_check():
 def get_db_connection():
     """Establece conexión con la base de datos PostgreSQL"""
     try:
-        conn = psycopg2.connect(
-            dbname=os.getenv("DATABASE_URL") or os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            host=os.getenv("DB_HOST"),
+        database_url = os.getenv("DATABASE_URL")
+        
+        # Si tenemos DATABASE_URL (como en Render), úsala directamente
+        if database_url:
+            # Render usa URLs en formato postgres://, necesitamos convertirlas a postgresql://
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://")
+            return psycopg2.connect(database_url)
+        
+        # Si no, usa las variables individuales (para desarrollo local)
+        return psycopg2.connect(
+            dbname=os.getenv("DB_NAME", "postgres"),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD", ""),
+            host=os.getenv("DB_HOST", "localhost"),
             port=os.getenv("DB_PORT", "5432")
         )
-        return conn
     except Exception as e:
         logger.error(f"❌ Error conectando a la base de datos: {str(e)}")
         raise
