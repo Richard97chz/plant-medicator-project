@@ -627,18 +627,14 @@ async def save_feedback(feedback: FeedbackRequest):
 
 @app.post("/api/register")
 async def register_user(user: UserRegistration):
+    connection = None
+    cursor = None
     try:
         print_terminal_separator()
         print("👤 REGISTRO DE NUEVO USUARIO")
         print_terminal_separator()
         
-        connection = psycopg2.connect(
-            dbname=os.getenv("DATABASE_URL") or os.getenv("DB_NAME"),  
-            user=os.getenv("DB_USER"),            
-            password=os.getenv("DB_PASSWORD"),    
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT", "5432")          
-        )
+        connection = get_db_connection()
         cursor = connection.cursor()
         
         logger.info(f"📝 Registrando usuario: {user.username} ({user.email})")
@@ -664,7 +660,7 @@ async def register_user(user: UserRegistration):
             logger.warning(f"⚠️  Teléfono ya existe: {user.phoneNumber}")
             raise HTTPException(status_code=400, detail="El número de teléfono ya está registrado")
 
-        # Use bcrypt directly for password hashing
+        # Hash de la contraseña
         password_bytes = user.password.encode('utf-8')
         salt = bcrypt.gensalt()
         hashed_password = bcrypt.hashpw(password_bytes, salt).decode('utf-8')
@@ -691,7 +687,7 @@ async def register_user(user: UserRegistration):
             user.weight,
             user.height,
             user.zone,
-            user.occupation,
+            user.occupation or 'No especificada',
             'No especificada',
             datetime.now(),
             None
@@ -849,14 +845,14 @@ def get_db_connection():
     try:
         database_url = os.getenv("DATABASE_URL")
         
-        # Si tenemos DATABASE_URL (como en Render), úsala directamente
+        # Render usa URLs en formato postgres:// que psycopg2 no soporta directamente
+        if database_url and database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
         if database_url:
-            # Render usa URLs en formato postgres://, necesitamos convertirlas a postgresql://
-            if database_url.startswith("postgres://"):
-                database_url = database_url.replace("postgres://", "postgresql://")
             return psycopg2.connect(database_url)
         
-        # Si no, usa las variables individuales (para desarrollo local)
+        # Fallback para desarrollo local
         return psycopg2.connect(
             dbname=os.getenv("DB_NAME", "postgres"),
             user=os.getenv("DB_USER", "postgres"),
