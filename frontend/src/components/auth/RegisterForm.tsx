@@ -30,7 +30,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [backendStatus, setBackendStatus] = useState<string>('');
   const [formData, setFormData] = useState<RegistrationFormData>({
     fullName: '',
     email: '',
@@ -52,8 +51,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
-  // URL del API usando la variable de entorno de Vercel
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://plant-medicator-project.onrender.com';
+  // URL del API - Configuración mejorada para producción
+  const API_BASE_URL = process.env.NODE_ENV === 'production' 
+    ? (process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'https://plant-medicator-project.onrender.com')
+    : (process.env.NEXT_PUBLIC_API_URL || process.env.REACT_APP_API_URL || 'http://localhost:8000');
 
   const occupationOptions = [
     "Sin nivel educativo/sin instrucción",
@@ -69,55 +70,22 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
     "Maestría/doctorado"
   ];
 
-  // Verificar la conexión con el backend
-  const checkBackendHealth = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/health`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log('Backend health check:', data);
-      setBackendStatus('✅ Backend conectado correctamente');
-      return data;
-    } catch (error: any) {
-      console.error('Backend no disponible:', error);
-      
-      let errorMessage = '❌ Backend no disponible';
-      if (error.message.includes('Failed to fetch')) {
-        errorMessage += ' - Error de conexión';
-      } else if (error.message.includes('CORS')) {
-        errorMessage += ' - Error de CORS';
-      } else {
-        errorMessage += ` - ${error.message}`;
-      }
-      
-      setBackendStatus(errorMessage);
-      return null;
-    }
-  };
-
-  // Verificar el estado del backend al cargar el componente
-  useEffect(() => {
-    checkBackendHealth();
-  }, []);
-
+  // Efecto mejorado para manejar la redirección
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
     if (successMessage) {
+      console.log('Success message detected, setting up redirect timer');
+      
       timeoutId = setTimeout(() => {
+        console.log('Executing redirect logic');
+        
         if (onRegisterSuccess) {
+          console.log('Calling onRegisterSuccess callback');
           onRegisterSuccess();
         } else {
-          navigate('/login');
+          console.log('Navigating to /login');
+          navigate('/login', { replace: true });
         }
       }, 2000);
     }
@@ -243,12 +211,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
     return '';
   };
 
-  // Función para validar todo el formulario
   const validateAllFields = (): boolean => {
     const newErrors: FormErrors = {};
     const newTouched: { [key: string]: boolean } = {};
     
-    // Lista de todos los campos requeridos
     const fieldsToValidate = [
       'fullName', 'email', 'username', 'password', 'confirmPassword',
       'dni', 'phoneNumber', 'age', 'gender', 'weight', 'height', 'zone', 'occupation'
@@ -295,82 +261,9 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
     setErrors(prev => ({ ...prev, [name]: error }));
   };
 
-  // Función mejorada para manejar el registro
-  const handleRegister = async (formData: RegistrationFormData) => {
-    try {
-      const apiUrl = `${API_BASE_URL}/api/register`;
-      console.log('Enviando a:', apiUrl);
-      console.log('Datos a enviar:', formData);
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-  
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-  
-      // Verificar si la respuesta es exitosa
-      if (!response.ok) {
-        let errorMessage = 'Error al registrar usuario';
-        
-        try {
-          const errorData = await response.json();
-          console.log('Error data:', errorData);
-          errorMessage = errorData.detail || errorData.message || errorMessage;
-        } catch (parseError) {
-          console.log('Error parsing response:', parseError);
-          // Si no se puede parsear como JSON, usar mensaje genérico
-          if (response.status === 0) {
-            errorMessage = 'Error de conexión: No se puede conectar con el servidor';
-          } else if (response.status >= 500) {
-            errorMessage = 'Error del servidor. Intente nuevamente más tarde.';
-          } else if (response.status === 404) {
-            errorMessage = 'Endpoint no encontrado. Verifique la URL del API.';
-          } else {
-            errorMessage = `Error HTTP ${response.status}: ${response.statusText}`;
-          }
-        }
-        
-        throw new Error(errorMessage);
-      }
-  
-      const data = await response.json();
-      console.log('Usuario registrado exitosamente:', data);
-      return data;
-      
-    } catch (error: any) {
-      console.error('Error en el registro:', error);
-      
-      // Manejar diferentes tipos de errores
-      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-        throw new Error('Error de conexión: No se puede conectar con el servidor. Verifique su conexión a internet y que el backend esté funcionando.');
-      } else if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
-        throw new Error('Error de red: Problema de conectividad. Intente nuevamente.');
-      } else if (error.message.includes('CORS')) {
-        throw new Error('Error de CORS: El servidor no permite solicitudes desde este dominio.');
-      } else if (error.message.includes('ya está en uso') || error.message.includes('usuario')) {
-        throw new Error('El nombre de usuario ya está en uso');
-      } else if (error.message.includes('ya está registrado') || error.message.includes('correo')) {
-        throw new Error('El correo electrónico ya está registrado');
-      } else if (error.message.includes('DNI')) {
-        throw new Error('El DNI ya está registrado');
-      } else if (error.message.includes('teléfono')) {
-        throw new Error('El número de teléfono ya está registrado');
-      } else {
-        throw new Error(error.message || 'Error desconocido al registrar usuario');
-      }
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validar todos los campos antes de enviar
     const isFormValid = validateAllFields();
     
     if (!isFormValid) {
@@ -382,25 +275,61 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
     setErrors({}); // Limpiar errores anteriores
 
     try {
-      await handleRegister(formData);
-      setSuccessMessage('¡Usuario registrado exitosamente! Redirigiendo al login...');
-    } catch (error: any) {
-      console.error('Error al registrar:', error);
+      const apiUrl = `${API_BASE_URL}/api/register`;
+      console.log('Enviando datos a:', apiUrl);
+      console.log('Datos del formulario:', formData);
       
-      // Manejar errores específicos
-      if (error.message.includes('usuario')) {
-        setErrors(prev => ({ ...prev, username: error.message }));
-      } else if (error.message.includes('correo')) {
-        setErrors(prev => ({ ...prev, email: error.message }));
-      } else if (error.message.includes('DNI')) {
-        setErrors(prev => ({ ...prev, dni: error.message }));
-      } else if (error.message.includes('teléfono')) {
-        setErrors(prev => ({ ...prev, phoneNumber: error.message }));
-      } else if (error.message.includes('conexión')) {
-        alert('Error de conexión con el servidor. Verifica tu conexión a internet y que el backend esté funcionando.');
-      } else {
-        alert(error.message);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+      });
+
+      console.log('Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log('Error response:', errorData);
+        
+        if (errorData.detail) {
+          // Manejar errores específicos del backend
+          if (errorData.detail.includes("usuario") || errorData.detail.includes("username")) {
+            setErrors(prev => ({ ...prev, username: errorData.detail }));
+          } else if (errorData.detail.includes("correo") || errorData.detail.includes("email")) {
+            setErrors(prev => ({ ...prev, email: errorData.detail }));
+          } else if (errorData.detail.includes("DNI")) {
+            setErrors(prev => ({ ...prev, dni: errorData.detail }));
+          } else if (errorData.detail.includes("teléfono") || errorData.detail.includes("telefono")) {
+            setErrors(prev => ({ ...prev, phoneNumber: errorData.detail }));
+          } else {
+            alert(errorData.detail);
+          }
+        } else {
+          alert('Error al registrar usuario. Por favor, intente nuevamente.');
+        }
+        return;
       }
+
+      const data = await response.json();
+      console.log('Registro exitoso:', data);
+      
+      // Establecer mensaje de éxito - esto debería triggear la redirección
+      setSuccessMessage('¡Usuario registrado exitosamente! Redirigiendo al login...');
+      
+      // Redirección inmediata como respaldo si el useEffect falla
+      setTimeout(() => {
+        if (onRegisterSuccess) {
+          onRegisterSuccess();
+        } else {
+          navigate('/login', { replace: true });
+        }
+      }, 2500);
+
+    } catch (error) {
+      console.error('Error al registrar:', error);
+      alert('Error de conexión. Por favor, intente nuevamente.');
     } finally {
       setIsSubmitting(false);
     }
@@ -420,17 +349,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   return (
     <form onSubmit={handleSubmit} className="max-w-md mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6">Registro de Usuario</h2>
-      
-      {/* Indicador de estado del backend */}
-      {backendStatus && (
-        <div className={`mb-4 p-2 rounded text-sm ${
-          backendStatus.includes('✅') 
-            ? 'bg-green-100 text-green-700' 
-            : 'bg-red-100 text-red-700'
-        }`}>
-          {backendStatus}
-        </div>
-      )}
       
       {successMessage && (
         <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
@@ -728,15 +646,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
           }`}
         >
           {isSubmitting ? 'Registrando...' : 'Registrarse'}
-        </button>
-
-        {/* Botón para verificar conexión del backend */}
-        <button
-          type="button"
-          onClick={checkBackendHealth}
-          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        >
-          Verificar Conexión del Backend
         </button>
       </div>
     </form>
