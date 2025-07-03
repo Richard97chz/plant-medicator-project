@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 interface RegistrationFormData {
   fullName: string;
@@ -27,7 +26,6 @@ interface RegisterFormProps {
 }
 
 export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess }) => {
-  const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [backendStatus, setBackendStatus] = useState<string>('');
@@ -52,8 +50,10 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
 
-  // URL del API usando la variable de entorno de Vercel
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://plant-medicator-project.onrender.com';
+  // URL del API usando la variable de entorno
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
+                       process.env.REACT_APP_API_URL || 
+                       'https://plant-medicator-project.onrender.com';
 
   const occupationOptions = [
     "Sin nivel educativo/sin instrucción",
@@ -108,7 +108,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   useEffect(() => {
     checkBackendHealth();
   }, []);
-
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const { key, currentTarget } = e;
@@ -365,14 +364,13 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
       await handleRegister(formData);
       setSuccessMessage('¡Usuario registrado exitosamente! Redirigiendo al login...');
       
-      // Redirección con timeout para mostrar el mensaje
+      // SOLUCIÓN: Usar un timeout más corto y ejecutar la redirección inmediatamente
       setTimeout(() => {
         if (onRegisterSuccess) {
-          onRegisterSuccess(); // Esto ejecutará navigate('/login') desde App.tsx
-        } else {
-          navigate('/login', { replace: true }); // Fallback por si no hay prop
+          onRegisterSuccess();
         }
-      }, 2000);
+      }, 1500); // Reducido a 1.5 segundos
+      
     } catch (error: any) {
       console.error('Error al registrar:', error);
       
