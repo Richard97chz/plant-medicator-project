@@ -748,7 +748,7 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
                   <h1 className="text-2xl font-bold">Sistema de Consulta Médica Natural</h1>
                 </header>
                 <main className="container mx-auto p-4 max-w-2xl">
-                  <RegisterForm onRegisterSuccess={() => <Navigate to="/login" replace />} />
+                  <RegisterForm onRegisterSuccess={() => navigate('/login')} />
                   <p className="text-center mt-4">
                     ¿Ya tienes una cuenta?{' '}
                     <Link to="/login" className="text-green-600 hover:text-green-700">
