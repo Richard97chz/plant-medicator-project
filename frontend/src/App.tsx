@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 interface Message {
   id: string;
@@ -35,6 +36,7 @@ const QUESTIONS = {
 };
 
 const App = () => {
+  const navigate = useNavigate(); 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -706,7 +708,6 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
   };
 
   return (
-    <Router>
       <Routes>
         <Route 
           path="/" 
@@ -771,7 +772,7 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
           element={<Navigate to="/" replace />} 
         />
       </Routes>
-    </Router>
+    
   );
 };
 
