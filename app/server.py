@@ -11,6 +11,7 @@ import importlib.util
 import sys
 import os
 import logging
+from fastapi.responses import HTMLResponse
 
 
 # Configurar logging más detallado
@@ -845,7 +846,74 @@ async def debug_env():
         "DATABASE_URL_SET": bool(os.getenv("DATABASE_URL")),
         # No mostrar valores sensibles como passwords
     }
-    
+
+@app.get("/", response_class=HTMLResponse)
+async def welcome_page():
+    """
+    Página de bienvenida HTML para el servidor
+    """
+    html_content = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>PlantMedicator API</title>
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #2c5530; text-align: center; }
+            .status { background: #d4edda; color: #155724; padding: 10px; border-radius: 5px; margin: 20px 0; }
+            .endpoint { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #007bff; }
+            .tech { display: inline-block; background: #e9ecef; padding: 5px 10px; margin: 5px; border-radius: 15px; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🌿 PlantMedicator API</h1>
+            <div class="status">
+                ✅ Servidor en línea y funcionando correctamente
+            </div>
+            
+            <h2>📋 Endpoints Disponibles</h2>
+            <div class="endpoint">
+                <strong>GET /health</strong> - Estado del servidor y base de datos
+            </div>
+            <div class="endpoint">
+                <strong>POST /rag/chat</strong> - Consultas médicas con IA
+            </div>
+            <div class="endpoint">
+                <strong>POST /feedback</strong> - Envío de feedback de tratamientos
+            </div>
+            <div class="endpoint">
+                <strong>POST /api/register</strong> - Registro de nuevos usuarios
+            </div>
+            <div class="endpoint">
+                <strong>POST /api/login</strong> - Autenticación de usuarios
+            </div>
+            <div class="endpoint">
+                <strong>GET /docs</strong> - Documentación automática de la API
+            </div>
+            
+            <h2>🔧 Tecnologías</h2>
+            <div>
+                <span class="tech">FastAPI</span>
+                <span class="tech">PostgreSQL</span>
+                <span class="tech">Neural Networks</span>
+                <span class="tech">RAG System</span>
+                <span class="tech">JWT Auth</span>
+            </div>
+            
+            <h2>📚 Documentación</h2>
+            <p>Visita <a href="/docs">/docs</a> para ver la documentación interactiva de la API.</p>
+            
+            <p style="text-align: center; margin-top: 30px; color: #666;">
+                Sistema de recomendación de plantas medicinales con IA híbrida
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
 def run():
     import uvicorn
     print_terminal_separator()
