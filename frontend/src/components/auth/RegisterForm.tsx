@@ -72,14 +72,34 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   // Verificar la conexión con el backend
   const checkBackendHealth = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/health`);
+      const response = await fetch(`${API_BASE_URL}/health`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       console.log('Backend health check:', data);
-      setBackendStatus('✅ Backend conectado');
+      setBackendStatus('✅ Backend conectado correctamente');
       return data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Backend no disponible:', error);
-      setBackendStatus('❌ Backend no disponible');
+      
+      let errorMessage = '❌ Backend no disponible';
+      if (error.message.includes('Failed to fetch')) {
+        errorMessage += ' - Error de conexión';
+      } else if (error.message.includes('CORS')) {
+        errorMessage += ' - Error de CORS';
+      } else {
+        errorMessage += ` - ${error.message}`;
+      }
+      
+      setBackendStatus(errorMessage);
       return null;
     }
   };
@@ -278,22 +298,47 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
   // Función mejorada para manejar el registro
   const handleRegister = async (formData: RegistrationFormData) => {
     try {
-      console.log('Enviando a:', `${API_BASE_URL}/api/register`);
+      const apiUrl = `${API_BASE_URL}/api/register`;
+      console.log('Enviando a:', apiUrl);
+      console.log('Datos a enviar:', formData);
       
-      const response = await fetch(`${API_BASE_URL}/api/register`, {
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
         body: JSON.stringify(formData),
       });
-
+  
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+  
       // Verificar si la respuesta es exitosa
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Error al registrar usuario');
+        let errorMessage = 'Error al registrar usuario';
+        
+        try {
+          const errorData = await response.json();
+          console.log('Error data:', errorData);
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.log('Error parsing response:', parseError);
+          // Si no se puede parsear como JSON, usar mensaje genérico
+          if (response.status === 0) {
+            errorMessage = 'Error de conexión: No se puede conectar con el servidor';
+          } else if (response.status >= 500) {
+            errorMessage = 'Error del servidor. Intente nuevamente más tarde.';
+          } else if (response.status === 404) {
+            errorMessage = 'Endpoint no encontrado. Verifique la URL del API.';
+          } else {
+            errorMessage = `Error HTTP ${response.status}: ${response.statusText}`;
+          }
+        }
+        
+        throw new Error(errorMessage);
       }
-
+  
       const data = await response.json();
       console.log('Usuario registrado exitosamente:', data);
       return data;
@@ -302,8 +347,12 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
       console.error('Error en el registro:', error);
       
       // Manejar diferentes tipos de errores
-      if (error.message.includes('fetch') || error.name === 'TypeError') {
-        throw new Error('Error de conexión con el servidor. Por favor, intenta nuevamente.');
+      if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        throw new Error('Error de conexión: No se puede conectar con el servidor. Verifique su conexión a internet y que el backend esté funcionando.');
+      } else if (error.name === 'TypeError' && error.message.includes('NetworkError')) {
+        throw new Error('Error de red: Problema de conectividad. Intente nuevamente.');
+      } else if (error.message.includes('CORS')) {
+        throw new Error('Error de CORS: El servidor no permite solicitudes desde este dominio.');
       } else if (error.message.includes('ya está en uso') || error.message.includes('usuario')) {
         throw new Error('El nombre de usuario ya está en uso');
       } else if (error.message.includes('ya está registrado') || error.message.includes('correo')) {
