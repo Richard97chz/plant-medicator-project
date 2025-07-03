@@ -89,23 +89,26 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-CORS_ORIGINS = [
+# Configurar CORS
+origins = [
     "http://localhost:3000",  # Para desarrollo local
-    "https://plant-medicator-project.vercel.app",  # Tu dominio específico
-    "https://plant-medicator-project-pvin1pbxd-richard97chzs-projects.vercel.app",  # Deployment específico
+    "http://localhost:3001",  # Para desarrollo local alternativo
+    "https://plant-medicator-project.vercel.app",  # Tu dominio de Vercel
+    "https://plant-medicator-project-pvin1pbxd-richard97chzs-projects.vercel.app",  # Tu dominio de deployment
+    "https://*.vercel.app",  # Permitir todos los subdominios de Vercel
 ]
 
 # Si estás en producción, agregar dinámicamente los dominios de Vercel
 if os.getenv("NODE_ENV") == "production":
     # Agregar dominios de preview de Vercel
-    CORS_ORIGINS.extend([
+    origins.extend([
         "https://plant-medicator-project-git-main-richard97chzs-projects.vercel.app",
         # Puedes agregar más dominios aquí según sea necesario
     ])
-    
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS,
+    allow_origins=origins,  # Usar 'origins' en lugar de 'CORS_ORIGINS'
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
