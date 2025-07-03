@@ -384,6 +384,14 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
     try {
       await handleRegister(formData);
       setSuccessMessage('¡Usuario registrado exitosamente! Redirigiendo al login...');
+      // Redirección alternativa si el efecto falla
+      setTimeout(() => {
+        if (onRegisterSuccess) {
+          onRegisterSuccess();
+        } else {
+          navigate('/login');
+        }
+      }, 2000);
     } catch (error: any) {
       console.error('Error al registrar:', error);
       
