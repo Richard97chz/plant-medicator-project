@@ -109,25 +109,6 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onRegisterSuccess })
     checkBackendHealth();
   }, []);
 
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
-    if (successMessage) {
-      timeoutId = setTimeout(() => {
-        if (onRegisterSuccess) {
-          onRegisterSuccess();
-        } else {
-          navigate('/login');
-        }
-      }, 2000);
-    }
-  
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
-  }, [successMessage, navigate, onRegisterSuccess]);
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const { key, currentTarget } = e;
