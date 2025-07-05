@@ -13,7 +13,7 @@ const getApiUrl = () => {
         return process.env.REACT_APP_API_URL || 'http://localhost:8000';
     }
     // En producción usa la variable de entorno
-    return process.env.REACT_APP_API_URL || 'https://tu-backend.onrender.com';
+    return process.env.REACT_APP_API_URL || 'https://*.onrender.com';
 };
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
