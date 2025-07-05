@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
 import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
 
 interface Message {
   id: string;
@@ -36,7 +35,6 @@ const QUESTIONS = {
 };
 
 const App = () => {
-  const navigate = useNavigate(); 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -708,6 +706,7 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
   };
 
   return (
+    <Router>
       <Routes>
         <Route 
           path="/" 
@@ -749,7 +748,7 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
                   <h1 className="text-2xl font-bold">Sistema de Consulta Médica Natural</h1>
                 </header>
                 <main className="container mx-auto p-4 max-w-2xl">
-                  <RegisterForm onRegisterSuccess={() => navigate('/login')} />
+                  <RegisterForm onRegisterSuccess={() => <Navigate to="/login" replace />} />
                   <p className="text-center mt-4">
                     ¿Ya tienes una cuenta?{' '}
                     <Link to="/login" className="text-green-600 hover:text-green-700">
@@ -772,7 +771,7 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
           element={<Navigate to="/" replace />} 
         />
       </Routes>
-    
+    </Router>
   );
 };
 
