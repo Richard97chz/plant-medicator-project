@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { LoginForm } from './components/auth/LoginForm';
 import { RegisterForm } from './components/auth/RegisterForm';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom';
 
 interface Message {
   id: string;
@@ -705,6 +705,33 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
     );
   };
 
+  // Componente separado para manejar el registro con navegación
+  const RegisterComponent = () => {
+    const navigate = useNavigate();
+    
+    const handleRegisterSuccess = () => {
+      // Redirigir al login después del registro exitoso
+      navigate('/login');
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <header className="bg-green-600 text-white p-4 text-center">
+          <h1 className="text-2xl font-bold">Sistema de Consulta Médica Natural</h1>
+        </header>
+        <main className="container mx-auto p-4 max-w-2xl">
+          <RegisterForm onRegisterSuccess={handleRegisterSuccess} />
+          <p className="text-center mt-4">
+            ¿Ya tienes una cuenta?{' '}
+            <Link to="/login" className="text-green-600 hover:text-green-700">
+              Inicia sesión
+            </Link>
+          </p>
+        </main>
+      </div>
+    );
+  };
+
   return (
     <Router>
       <Routes>
@@ -743,20 +770,7 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
             isAuthenticated ? (
               <Navigate to="/chat" replace />
             ) : (
-              <div className="min-h-screen bg-gray-50">
-                <header className="bg-green-600 text-white p-4 text-center">
-                  <h1 className="text-2xl font-bold">Sistema de Consulta Médica Natural</h1>
-                </header>
-                <main className="container mx-auto p-4 max-w-2xl">
-                  <RegisterForm onRegisterSuccess={() => <Navigate to="/login" replace />} />
-                  <p className="text-center mt-4">
-                    ¿Ya tienes una cuenta?{' '}
-                    <Link to="/login" className="text-green-600 hover:text-green-700">
-                      Inicia sesión
-                    </Link>
-                  </p>
-                </main>
-              </div>
+              <RegisterComponent />
             )
           } 
         />
