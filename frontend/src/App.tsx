@@ -211,7 +211,23 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
         return;
       }
   
-      // Resto del código de preparación de la solicitud...
+      // Asegurarse de que las alergias tengan un valor válido
+      const allergies = patientInfo.allergies || 'ninguna';
+  
+      // Definir requestBody aquí
+      const requestBody = {
+        session_id: sessionIdRef.current,
+        patient_info: {
+          user_id: userInfo.username,
+          symptoms: patientInfo.symptoms || '',
+          duration: patientInfo.duration || '',
+          allergies: allergies,
+          session_id: sessionIdRef.current
+        },
+        selected_plant: selectedPlant || null
+      };
+  
+      console.log('Sending request with body:', requestBody);
   
       const response = await fetch(`${API_BASE_URL}/rag/chat`, {
         method: 'POST',
@@ -222,7 +238,25 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
         body: JSON.stringify(requestBody)
       });
   
-      // Resto del código de manejo de respuesta...
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.detail || data.error || 'Error en la solicitud');
+      }
+  
+      setMessages(prev => [...prev, {
+        id: uuidv4(),
+        message: data.answer,
+        isUser: false
+      }]);
+  
+      if (!selectedPlant) {
+        setAwaitingPlantSelection(true);
+      } else {
+        setAwaitingPlantSelection(false);
+        setShowFeedbackForm(true);
+      }
+  
     } catch (error) {
       console.error('Error in requestMedication:', error);
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
