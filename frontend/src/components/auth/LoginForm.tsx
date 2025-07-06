@@ -22,12 +22,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
-
+    
         try {
             const apiUrl = `${API_BASE_URL}/api/login`;
             console.log('Enviando login a:', apiUrl);
-            console.log('Credenciales:', { identifier: credentials.identifier, password: '***' });
-
+    
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
@@ -36,9 +35,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 },
                 body: JSON.stringify(credentials)
             });
-
+    
             console.log('Response status:', response.status);
-
+    
             if (!response.ok) {
                 let errorMessage = 'Error al iniciar sesión';
                 
@@ -61,27 +60,28 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 
                 throw new Error(errorMessage);
             }
-
+    
             const data = await response.json();
             console.log('Login exitoso:', data);
-
-            // Guardar el token y la información del usuario
-            if (data.access_token) {
-                // Usar variables en memoria en lugar de localStorage para compatibilidad
-                const userInfo = {
-                    username: data.username || credentials.identifier,
-                    token: data.access_token,
-                    // Otros datos si están disponibles
-                };
-                
-                // Si necesitas persistir datos, guárdalos en el estado de la aplicación padre
-                console.log('Usuario autenticado:', userInfo);
-                
-                // Pasar el nombre de usuario al manejar el éxito del inicio de sesión
-                onLoginSuccess(userInfo.username);
-            } else {
+    
+            if (!data.access_token) {
                 throw new Error('No se recibió token de acceso');
             }
+    
+            // Guardar en localStorage como espera App.tsx
+            localStorage.setItem('token', data.access_token);
+            
+            const userInfo = {
+                username: data.username || credentials.identifier,
+                fullName: data.full_name || '',
+                token: data.access_token
+            };
+            
+            localStorage.setItem('userInfo', JSON.stringify(userInfo));
+            
+            // Pasar los datos completos al padre
+            onLoginSuccess(userInfo);
+    
         } catch (error) {
             console.error('Error en login:', error);
             
@@ -99,6 +99,10 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             } else {
                 setError('Error desconocido al iniciar sesión');
             }
+            
+            // Limpiar credenciales en caso de error
+            localStorage.removeItem('token');
+            localStorage.removeItem('userInfo');
         } finally {
             setIsLoading(false);
         }
