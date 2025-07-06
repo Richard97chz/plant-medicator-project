@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional
@@ -12,6 +12,7 @@ import sys
 import os
 import logging
 from fastapi.responses import HTMLResponse
+from fastapi.security import OAuth2PasswordBearer
 
 
 # Configurar logging más detallado
@@ -81,6 +82,8 @@ hybrid_recommender = HybridRecommender()
 SECRET_KEY = "GROF*_*09"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
 @asynccontextmanager
@@ -403,10 +406,32 @@ async def get_user_data_from_db(username: str) -> Optional[Dict[str, Any]]:
             cursor.close()
         if conn:
             conn.close()
-
-@app.post("/rag/chat")
-async def chat_endpoint(consultation: PatientConsultation):
+            
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return username
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+            
+@app.post("/rag/chat")
+async def chat_endpoint(
+    consultation: PatientConsultation,
+    current_user: str = Depends(get_current_user)
+):
+    try:
+        # Asegurarse de que el user_id en patient_info coincida con el usuario autenticado
+        consultation.patient_info['user_id'] = current_user
         # DETECTAR ESTADO DE LA CONSULTA
         consultation_state, state_description = detect_consultation_state(
             consultation.selected_plant, 
@@ -523,7 +548,6 @@ async def chat_endpoint(consultation: PatientConsultation):
         print_terminal_separator()
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @app.post("/feedback")
 async def save_feedback(feedback: FeedbackRequest):
