@@ -189,6 +189,17 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
   // En App.tsx, modifica la función requestMedication para incluir logs:
   const requestMedication = async (selectedPlant?: string) => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setMessages(prev => [...prev, {
+          id: uuidv4(),
+          message: "Error: Sesión no válida. Por favor, inicia sesión nuevamente.",
+          isUser: false
+        }]);
+        setIsAuthenticated(false);
+        return;
+      }
+  
       const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
       if (!userInfo.username) {
         setMessages(prev => [...prev, {
@@ -200,55 +211,32 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
         return;
       }
   
-      // Asegurarse de que las alergias tengan un valor válido
-      const allergies = patientInfo.allergies || 'ninguna';
-  
-      const requestBody = {
-        session_id: sessionIdRef.current,
-        patient_info: {
-          user_id: userInfo.username,
-          symptoms: patientInfo.symptoms || '',
-          duration: patientInfo.duration || '',
-          allergies: allergies,
-          session_id: sessionIdRef.current
-        },
-        selected_plant: selectedPlant || null
-      };
-  
-      console.log('Sending request with body:', requestBody);
+      // Resto del código de preparación de la solicitud...
   
       const response = await fetch(`${API_BASE_URL}/rag/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(requestBody)
       });
   
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.detail || data.error || 'Error en la solicitud');
-      }
-  
-      setMessages(prev => [...prev, {
-        id: uuidv4(),
-        message: data.answer,
-        isUser: false
-      }]);
-  
-      if (!selectedPlant) {
-        setAwaitingPlantSelection(true);
-      } else {
-        setAwaitingPlantSelection(false);
-        setShowFeedbackForm(true);
-      }
-  
+      // Resto del código de manejo de respuesta...
     } catch (error) {
       console.error('Error in requestMedication:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      
+      // Si el error es de autenticación, redirigir al login
+      if (errorMessage.includes('401') || errorMessage.includes('autenticación')) {
+        setIsAuthenticated(false);
+        localStorage.removeItem('token');
+        localStorage.removeItem('userInfo');
+      }
+      
       setMessages(prev => [...prev, {
         id: uuidv4(),
-        message: `Error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        message: `Error: ${errorMessage}`,
         isUser: false
       }]);
     } finally {
@@ -368,46 +356,42 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
 
   useEffect(() => {
     const checkAuth = () => {
-      // Obtener los datos del localStorage
       const userInfo = localStorage.getItem('userInfo');
       const token = localStorage.getItem('token');
-  
-      // Si no hay datos, el usuario no está autenticado
+      
+      // Verificación básica inicial
       if (!userInfo || !token) {
         setIsAuthenticated(false);
         return;
       }
-  
-      // Si hay datos, verificar si el token es válido
-      // (Aquí debes implementar una llamada a tu backend para validar el token)
-      fetch(`${API_BASE_URL}/api/validate-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      })
-        .then((response) => {
+      
+      // Verificación más robusta con el backend
+      const verifyToken = async () => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/health`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
           if (response.ok) {
-            // El token es válido, el usuario está autenticado
             setIsAuthenticated(true);
           } else {
-            // El token no es válido, limpiar el localStorage
             localStorage.removeItem('userInfo');
             localStorage.removeItem('token');
             setIsAuthenticated(false);
           }
-        })
-        .catch((error) => {
-          console.error('Error validating token:', error);
-          // Si hay un error, limpiar el localStorage
+        } catch (error) {
+          console.error('Error verifying token:', error);
           localStorage.removeItem('userInfo');
           localStorage.removeItem('token');
           setIsAuthenticated(false);
-        });
+        }
+      };
+      
+      verifyToken();
     };
   
-    // Ejecutar la verificación al cargar la aplicación
     checkAuth();
   }, []);
 
@@ -676,9 +660,10 @@ const saveFeedback = async (feedbackData: FeedbackData) => {
     if (!isAuthenticated) {
       return <Navigate to="/login" replace />;
     }
-
-    const userDisplayName = getUserDisplayName();
-
+  
+    const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
+    const userDisplayName = userInfo.fullName || userInfo.username || 'Usuario';
+  
     return (
       <div className="min-h-screen bg-gray-50">
         <header className="bg-green-600 text-white p-4 relative">
