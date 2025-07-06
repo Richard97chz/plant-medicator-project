@@ -711,25 +711,21 @@ async def register_user(user: UserRegistration):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error al registrar usuario: {str(e)}")
     finally:
-        if cursor:
+        if cursor is not None:
             cursor.close()
-        if connection:
+        if connection is not None:
             connection.close()
 
 @app.post("/api/login")
 async def login(credentials: LoginCredentials):
+    connection = None
+    cursor = None
     try:
         print_terminal_separator()
         print("🔐 INTENTO DE LOGIN")
         print_terminal_separator()
         
-        connection = psycopg2.connect(
-            dbname=os.getenv("DATABASE_URL") or os.getenv("DB_NAME"), 
-            user=os.getenv("DB_USER"),            
-            password=os.getenv("DB_PASSWORD"),    
-            host=os.getenv("DB_HOST"),            
-            port=os.getenv("DB_PORT", "5432")           
-        )
+        connection = get_db_connection()
         cursor = connection.cursor()
 
         logger.info(f"👤 Intento de login para: {credentials.identifier}")
@@ -796,9 +792,9 @@ async def login(credentials: LoginCredentials):
             detail=f"Error en el servidor: {str(e)}"
         )
     finally:
-        if cursor:
+        if cursor is not None:
             cursor.close()
-        if connection:
+        if connection is not None:
             connection.close()
 
 # Agregar este endpoint para verificar el estado del servidor
@@ -845,12 +841,23 @@ def get_db_connection():
     try:
         database_url = os.getenv("DATABASE_URL")
         
-        # Render usa URLs en formato postgres:// que psycopg2 no soporta directamente
-        if database_url and database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql://", 1)
-        
         if database_url:
-            return psycopg2.connect(database_url)
+            # Render usa URLs en formato postgres:// que psycopg2 no soporta directamente
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://", 1)
+            
+            # Parsear la URL para extraer los componentes
+            import urllib.parse
+            parsed = urllib.parse.urlparse(database_url)
+            
+            # Extraer componentes de la URL
+            return psycopg2.connect(
+                host=parsed.hostname,
+                port=parsed.port or 5432,
+                user=parsed.username,
+                password=parsed.password,
+                database=parsed.path.lstrip('/')  # Remover el '/' inicial
+            )
         
         # Fallback para desarrollo local
         return psycopg2.connect(
@@ -862,6 +869,7 @@ def get_db_connection():
         )
     except Exception as e:
         logger.error(f"❌ Error conectando a la base de datos: {str(e)}")
+        logger.error(f"DATABASE_URL: {os.getenv('DATABASE_URL')}")
         raise
         
 # Endpoint para verificar variables de entorno (útil para debugging)
