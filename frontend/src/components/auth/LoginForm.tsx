@@ -6,16 +6,6 @@ interface LoginFormProps {
     onLoginSuccess: (username: string) => void;
 }
 
-// Configuración de la API URL basada en el entorno
-const getApiUrl = () => {
-    // En desarrollo usa la variable de entorno o localhost por defecto
-    if (process.env.NODE_ENV === 'development') {
-        return process.env.REACT_APP_API_URL || 'http://localhost:8000';
-    }
-    // En producción usa la variable de entorno
-    return process.env.REACT_APP_API_URL || 'https://*.onrender.com';
-};
-
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     const [credentials, setCredentials] = useState<LoginCredentials>({
         identifier: '',
@@ -25,48 +15,90 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
+    // Usar la misma configuración que RegisterForm
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://plant-medicator-project.onrender.com';
+
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setIsLoading(true);
 
         try {
-            const apiUrl = getApiUrl();
-            const response = await fetch(`${apiUrl}/api/login`, {
+            const apiUrl = `${API_BASE_URL}/api/login`;
+            console.log('Enviando login a:', apiUrl);
+            console.log('Credenciales:', { identifier: credentials.identifier, password: '***' });
+
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                 },
                 body: JSON.stringify(credentials)
             });
 
-            const data = await response.json();
+            console.log('Response status:', response.status);
 
             if (!response.ok) {
-                throw new Error(data.detail || 'Error al iniciar sesión');
+                let errorMessage = 'Error al iniciar sesión';
+                
+                try {
+                    const errorData = await response.json();
+                    console.log('Error data:', errorData);
+                    errorMessage = errorData.detail || errorData.message || errorMessage;
+                } catch (parseError) {
+                    console.log('Error parsing response:', parseError);
+                    if (response.status === 401) {
+                        errorMessage = 'Usuario o contraseña incorrectos';
+                    } else if (response.status === 404) {
+                        errorMessage = 'Endpoint no encontrado. Verifique la URL del API.';
+                    } else if (response.status >= 500) {
+                        errorMessage = 'Error del servidor. Intente nuevamente más tarde.';
+                    } else {
+                        errorMessage = `Error HTTP ${response.status}: ${response.statusText}`;
+                    }
+                }
+                
+                throw new Error(errorMessage);
             }
 
-            // Guardar el token y la información del usuario en localStorage
+            const data = await response.json();
+            console.log('Login exitoso:', data);
+
+            // Guardar el token y la información del usuario
             if (data.access_token) {
-                localStorage.setItem('token', data.access_token);
-                
-                // Crear y guardar un objeto userInfo estructurado
+                // Usar variables en memoria en lugar de localStorage para compatibilidad
                 const userInfo = {
                     username: data.username || credentials.identifier,
+                    token: data.access_token,
                     // Otros datos si están disponibles
                 };
                 
-                localStorage.setItem('userInfo', JSON.stringify(userInfo));
+                // Si necesitas persistir datos, guárdalos en el estado de la aplicación padre
                 console.log('Usuario autenticado:', userInfo);
                 
                 // Pasar el nombre de usuario al manejar el éxito del inicio de sesión
                 onLoginSuccess(userInfo.username);
+            } else {
+                throw new Error('No se recibió token de acceso');
             }
         } catch (error) {
             console.error('Error en login:', error);
-            setError(error instanceof Error ? 
-                error.message : 
-                'Usuario o contraseña incorrectos');
+            
+            // Manejar diferentes tipos de errores
+            if (error instanceof Error) {
+                if (error.message.includes('Failed to fetch')) {
+                    setError('Error de conexión: No se puede conectar con el servidor. Verifique su conexión a internet.');
+                } else if (error.message.includes('NetworkError')) {
+                    setError('Error de red: Problema de conectividad. Intente nuevamente.');
+                } else if (error.message.includes('CORS')) {
+                    setError('Error de CORS: El servidor no permite solicitudes desde este dominio.');
+                } else {
+                    setError(error.message);
+                }
+            } else {
+                setError('Error desconocido al iniciar sesión');
+            }
         } finally {
             setIsLoading(false);
         }
