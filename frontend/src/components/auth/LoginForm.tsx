@@ -3,7 +3,11 @@ import { Eye, EyeOff } from 'lucide-react';
 import type { LoginCredentials } from '../../types/auth.types';
 
 interface LoginFormProps {
-    onLoginSuccess: (username: string) => void;
+    onLoginSuccess: (userData: { 
+        username: string; 
+        token: string; 
+        fullName?: string 
+    }) => void;
 }
 
 export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
@@ -68,7 +72,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
                 throw new Error('No se recibió token de acceso');
             }
     
-            // Guardar en localStorage como espera App.tsx
+            // Guardar en localStorage
             localStorage.setItem('token', data.access_token);
             
             const userInfo = {
@@ -80,12 +84,15 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onLoginSuccess }) => {
             localStorage.setItem('userInfo', JSON.stringify(userInfo));
             
             // Pasar los datos completos al padre
-            onLoginSuccess(userInfo);
+            onLoginSuccess({
+                username: data.username || credentials.identifier,
+                token: data.access_token,
+                fullName: data.full_name || ''
+            });
     
         } catch (error) {
             console.error('Error en login:', error);
             
-            // Manejar diferentes tipos de errores
             if (error instanceof Error) {
                 if (error.message.includes('Failed to fetch')) {
                     setError('Error de conexión: No se puede conectar con el servidor. Verifique su conexión a internet.');
